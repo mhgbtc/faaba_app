@@ -1,1 +1,1 @@
-# faaba_app
+# Faaba, une application de covoiturage au Bénin!
