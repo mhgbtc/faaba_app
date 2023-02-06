@@ -92,7 +92,7 @@ def create_app(test_config=None):
             {
                 "success" : True,
                 "created" : new_user.id,
-                'token': token.decode('utf-8')
+                'token': token.encode('utf-8').decode('utf-8')
             }
         )
     
@@ -123,7 +123,7 @@ def create_app(test_config=None):
                 {
                     "success" : True,
                     "logged" : check_user.id,
-                    'token': token.decode('utf-8')
+                    'token': token.encode('utf-8').decode('utf-8')
                 }
             )
         else:
