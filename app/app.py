@@ -33,19 +33,28 @@ def create_app(test_config=None):
         )
         return response
     
-    def token_required(func):
-        @wraps(func)
+    def token_required(f):
+        @wraps(f)
         def decorated(*args, **kwargs):
-            token = request.args.get('token')
-            if not token:
-                return jsonify({'Alert!': 'Token is missing!'}), 401
+            token = None
+        
+            if 'Authorization' in request.headers:
+                auth_header = request.headers['Authorization']
+                if 'Bearer ' in auth_header:
+                    token = auth_header.split(' ')[1]
+                else:
+                    return jsonify({'success': False, 'message': 'Invalid token format'}), 401
+            else:
+                return jsonify({'success': False, 'message': 'Token is missing'}), 401
 
             try:
-                data = jwt.decode(token, app.config['SECRET_KEY'])
+                data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+                current_user = User.query.filter_by(id=data['user']).first()
             except:
-                return jsonify({'Message': 'Invalid token'}), 403
+                return jsonify({'success': False, 'message': 'Invalid token'}), 401
             
-            return func(*args, **kwargs)
+            return f(current_user, *args, **kwargs)
+
         return decorated
     
     # writing my endpoints >>>
@@ -83,7 +92,6 @@ def create_app(test_config=None):
         token = jwt.encode(
             {
                 'user': new_user.id,
-                'expiration': str(datetime.utcnow() + timedelta(seconds=120))
             },
             app.config['SECRET_KEY']
         )
@@ -92,7 +100,7 @@ def create_app(test_config=None):
             {
                 "success" : True,
                 "created" : new_user.id,
-                'token': token.encode('utf-8').decode('utf-8')
+                'token': token
             }
         )
     
@@ -104,7 +112,7 @@ def create_app(test_config=None):
         email = body.get("email")
         password = body.get("password")
         
-        check_user = User.query.filter_by(email=email).first()
+        check_user = User.query.filter_by(email=email).first()        
         
         if check_user and bcrypt.check_password_hash(check_user.password, password):
             
@@ -113,8 +121,7 @@ def create_app(test_config=None):
             
             token = jwt.encode(
                 {
-                    'user': check_user.id,
-                    'expiration': str(datetime.utcnow() + timedelta(seconds=120))
+                    'user': check_user.id
                 },
                 app.config['SECRET_KEY']
             )
@@ -123,7 +130,7 @@ def create_app(test_config=None):
                 {
                     "success" : True,
                     "logged" : check_user.id,
-                    'token': token.encode('utf-8').decode('utf-8')
+                    'token': token
                 }
             )
         else:
@@ -133,88 +140,77 @@ def create_app(test_config=None):
     @app.route("/logout", methods=["POST"])
     def logout():
         # déconnecter l'utilisateur
+        session['logged_in'] = False
 
         # renvoyer le message de succès
         return jsonify(message="L'utilisateur a été déconnecté avec succès."), 200
     
-    # # Endpoint used to retrieve all users from database
-    # @app.route('/users', methods=['GET'])
-    # def get_users():
-    #     users = User.query.order_by(User.id).all()
+    # Endpoint used to retrieve all rides
+    @app.route('/rides', methods=['GET'])
+    def get_rides():
+        body = request.get_json()
+            
+        departure = body.get('departure', None)
+        arrival = body.get('arrival', None)
+        departure_date = body.get('departure_date', None)
+        estimated_arrival_date = body.get('estimated_arrival_date', None)
+        seats = body.get('seats', None)
         
-    #     if not users:
-    #         abort(404)
+        query = Ride.query
+        
+        if departure is not None:
+            query = query.filter(Ride.departure.ilike("%" + departure + "%"))
+        if arrival is not None:
+            query = query.filter(Ride.arrival.ilike("%" + arrival + "%"))
+        if departure_date is not None:
+            query = query.filter_by(departure_date=departure_date)
+        if estimated_arrival_date is not None:
+            query = query.filter_by(estimated_arrival_date=estimated_arrival_date)
+        if seats is not None:
+            query = query.filter_by(seats=seats)
+        
+        rides = query.all()
+        
+        if not rides:
+            abort(404)
             
-    #     return jsonify(
-    #         {
-    #             "success" : True,
-    #             "users" : [user.format() for user in users]
-    #         }
-    #     )
-    
-    # Endpoint used to retrieve all rides or create a new one
-    @app.route('/rides', methods=['GET', 'POST'])
-    def get_and_create_rides():
-        if request.method == 'GET':
-            body = request.get_json()
+        return jsonify(
+            {
+                'success' : True,
+                'rides' : [ride.format() for ride in rides]
+            }
+        )
+        
+    # Endpoint used to create new ride
+    @app.route('/rides', methods=['POST'])
+    @token_required
+    def create_rides(current_user):
+        body = request.get_json()
+        
+        driver_id = body.get('driver_id', None)
+        departure = body.get('departure', None)
+        arrival = body.get('arrival', None)
+        departure_date = body.get('departure_date', None)
+        estimated_arrival_date = body.get('estimated_arrival_date', None)
+        seats = body.get('seats', None)
+        
+        if not departure or not arrival or not seats or seats < 1:
+            abort(422)
             
-            departure = body.get('departure', None)
-            arrival = body.get('arrival', None)
-            departure_date = body.get('departure_date', None)
-            estimated_arrival_date = body.get('estimated_arrival_date', None)
-            seats = body.get('seats', None)
-            
-            query = Ride.query
-            
-            if departure is not None:
-                query = query.filter(Ride.departure.ilike("%" + departure + "%"))
-            if arrival is not None:
-                query = query.filter(Ride.arrival.ilike("%" + arrival + "%"))
-            if departure_date is not None:
-                query = query.filter_by(departure_date=departure_date)
-            if estimated_arrival_date is not None:
-                query = query.filter_by(estimated_arrival_date=estimated_arrival_date)
-            if seats is not None:
-                query = query.filter_by(seats=seats)
-            
-            rides = query.all()
-            
-            if not rides:
-                abort(404)
-                
-            return jsonify(
-                {
-                    'success' : True,
-                    'rides' : [ride.format() for ride in rides]
-                }
-            )
-        elif request.method == 'POST':
-            body = request.get_json()
-            
-            driver_id = body.get('driver_id', None)
-            departure = body.get('departure', None)
-            arrival = body.get('arrival', None)
-            departure_date = body.get('departure_date', None)
-            estimated_arrival_date = body.get('estimated_arrival_date', None)
-            seats = body.get('seats', None)
-            
-            if not departure or not arrival or not seats or seats < 1:
-                abort(422)
-                
-            new_ride = Ride(driver_id, departure, arrival, departure_date, estimated_arrival_date, seats)
-            new_ride.insert()
-            
-            return jsonify(
-                {
-                    'success' : True,
-                    'created' : new_ride.id
-                }
-            )
+        new_ride = Ride(driver_id, departure, arrival, departure_date, estimated_arrival_date, seats)
+        new_ride.insert()
+        
+        return jsonify(
+            {
+                'success' : True,
+                'created' : new_ride.id
+            }
+        )
     
     # Endpoint used to manipulate ride
     @app.route('/rides/<int:ride_id>', methods=['GET', 'DELETE', 'PUT'])
     @token_required
-    def ride_manipulation(ride_id):
+    def ride_manipulation(current_user, ride_id):
         try:
             ride = Ride.query.filter(Ride.id == ride_id).one_or_none()
             
@@ -261,7 +257,8 @@ def create_app(test_config=None):
 
     # Endpoint used to retrieve all bookings or create a new one
     @app.route('/bookings', methods=['GET', 'POST'])
-    def get_and_create_bookings():
+    @token_required
+    def get_and_create_bookings(current_user):
         if request.method == 'GET':
             bookings = Booking.query.order_by(Booking.id).all()
             
@@ -311,7 +308,8 @@ def create_app(test_config=None):
             
     # Endpoint used to manipulate booking
     @app.route('/bookings/<int:booking_id>', methods=['GET', 'DELETE', 'PUT'])
-    def booking_manipulation(booking_id):
+    @token_required
+    def booking_manipulation(current_user, booking_id):
         try:
             booking = Booking.query.filter(Booking.id == booking_id).one_or_none()
             
@@ -379,6 +377,21 @@ def create_app(test_config=None):
                 )
         except:
             abort(422)
+            
+    # # Endpoint used to retrieve all users from database
+    # @app.route('/users', methods=['GET'])
+    # def get_users():
+    #     users = User.query.order_by(User.id).all()
+        
+    #     if not users:
+    #         abort(404)
+            
+    #     return jsonify(
+    #         {
+    #             "success" : True,
+    #             "users" : [user.format() for user in users]
+    #         }
+    #     )
         
     # # Endpoint used to retrieve, modify and delete a user.
     # @app.route('/users/<int:user_id>', methods=['GET', 'DELETE', 'PUT'])

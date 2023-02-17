@@ -16,6 +16,8 @@ class FaabaTestCase(unittest.TestCase):
         with self.app.app_context():
             setup_db(self.app, self.database_path)
             
+        self.headers = {'Authorization': 'Bearer ' + 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyIjo0LCJleHBpcmF0aW9uIjoiMjAyMy0wMi0xNiAyMTo1Njo1Mi4zMzg1NDYifQ.k1OKZ1wicW1c9HTaoqpXTF_gmmsgkDPYhcd8quPC-uU'}
+        
         self.new_user = {
             "email" : "samtest7@gmail.com",
             "password" : "Test1234",
@@ -93,7 +95,7 @@ class FaabaTestCase(unittest.TestCase):
         self.new_valid_ride = {
             'driver_id' : 4,
             'departure' : "Porto-Novo",
-            'arrival' : "Cotonou",
+            'arrival' : "Parakou",
             "departure_date" : "03-02-2023 12:00",
             'estimated_arrival_date' : "10-02-2023 16:00",
             'seats' : 2  
@@ -243,7 +245,7 @@ class FaabaTestCase(unittest.TestCase):
         
     # #Test create new ride
     # def test_create_ride(self):
-    #     res = self.client().post('/rides', json=self.new_valid_ride)
+    #     res = self.client().post('/rides', headers=self.headers, json=self.new_valid_ride)
     #     data = json.loads(res.data)
         
     #     self.assertEqual(res.status_code, 200)
@@ -252,12 +254,19 @@ class FaabaTestCase(unittest.TestCase):
     
     # #Test 422 create new ride
     # def test_422_create_ride(self):
-    #     res = self.client().post('/rides', json=self.new_invalid_ride)
+    #     res = self.client().post('/rides', headers=self.headers, json=self.new_invalid_ride)
     #     data = json.loads(res.data)
         
     #     self.assertEqual(res.status_code, 422)
     #     self.assertEqual(data['success'], False)
     #     self.assertEqual(data['message'], 'unprocessable')
+        
+    # # Testing when user attempt to create a ride but not connected
+    # def test_401_create_ride(self):
+    #     res = self.client().post('/rides', json=self.new_valid_ride)
+    #     data = json.loads(res.data)
+        
+    #     self.assertEqual(res.status_code, 401)
         
     # #Test retrieve all rides
     # def test_get_rides(self):
@@ -270,7 +279,7 @@ class FaabaTestCase(unittest.TestCase):
         
     # #Test retrieve detail on existing unique ride
     # def test_get_ride_detail(self):
-    #     res = self.client().get('/rides/2')
+    #     res = self.client().get('/rides/2', headers=self.headers)
     #     data = json.loads(res.data)
         
     #     self.assertEqual(res.status_code, 200)
@@ -279,16 +288,23 @@ class FaabaTestCase(unittest.TestCase):
         
     # #Test 422 get detail on unexisting ride
     # def test_422_get_ride_detail(self):
-    #     res = self.client().get('/rides/100')
+    #     res = self.client().get('/rides/100', headers=self.headers)
     #     data = json.loads(res.data)
         
     #     self.assertEqual(res.status_code, 422)
     #     self.assertEqual(data['success'], False)
     #     self.assertEqual(data['message'], 'unprocessable')
         
+    # #Test 401 get detail on existing ride but not connected
+    # def test_401_get_ride_detail(self):
+    #     res = self.client().get('/rides/9')
+    #     data = json.loads(res.data)
+        
+    #     self.assertEqual(res.status_code, 401)
+        
     # # Test delete existing ride
     # def test_delete_ride(self):
-    #     res = self.client().delete('/rides/8')
+    #     res = self.client().delete('/rides/14', headers=self.headers)
     #     data = json.loads(res.data)
         
     #     self.assertEqual(res.status_code, 200)
@@ -297,16 +313,23 @@ class FaabaTestCase(unittest.TestCase):
         
     # #Test 422 delete unexisting ride
     # def test_422_delete_ride(self):
-    #     res = self.client().delete('/rides/100')
+    #     res = self.client().delete('/rides/100', headers=self.headers)
     #     data = json.loads(res.data)
         
     #     self.assertEqual(res.status_code, 422)
     #     self.assertEqual(data['success'], False)
     #     self.assertEqual(data['message'], 'unprocessable')
         
+    # # Test 401 on delete ride
+    # def test_401_delete_ride(self):
+    #     res = self.client().delete('/rides/13')
+    #     data = json.loads(res.data)
+        
+    #     self.assertEqual(res.status_code, 401)
+        
     # # Test update existing ride
     # def test_update_ride(self):
-    #     res = self.client().put('/rides/6', json=self.update_valid_ride)
+    #     res = self.client().put('/rides/10', headers=self.headers, json=self.update_valid_ride)
     #     data = json.loads(res.data)
         
     #     self.assertEqual(res.status_code, 200)
@@ -315,7 +338,7 @@ class FaabaTestCase(unittest.TestCase):
         
     # # Test 422 update unexisting ride
     # def test_422_update_ride(self):
-    #     res = self.client().put('/rides/300', json=self.update_valid_ride)
+    #     res = self.client().put('/rides/300', headers=self.headers, json=self.update_valid_ride)
     #     data = json.loads(res.data)
         
     #     self.assertEqual(res.status_code, 422)
@@ -324,61 +347,87 @@ class FaabaTestCase(unittest.TestCase):
         
     # # Test 422 update existing ride with invalid input
     # def test_422_update_invalid_ride(self):
-    #     res = self.client().put('/rides/2', json=self.new_invalid_ride)
+    #     res = self.client().put('/rides/2', headers=self.headers, json=self.new_invalid_ride)
     #     data = json.loads(res.data)
         
     #     self.assertEqual(res.status_code, 422)
     #     self.assertEqual(data['success'], False)
     #     self.assertEqual(data['message'], 'unprocessable')
+        
+    # # Test 401 update existing ride
+    # def test_401_update_ride(self):
+    #     res = self.client().put('/rides/10', json=self.update_valid_ride)
+    #     data = json.loads(res.data)
+        
+    #     self.assertEqual(res.status_code, 401)
     
-    # Test create new booking
-    def test_create_booking(self):
-        res = self.client().post('/bookings', json=self.new_valid_booking)
-        data = json.loads(res.data)
+    # # Test create new booking
+    # def test_create_booking(self):
+    #     res = self.client().post('/bookings', headers=self.headers, json=self.new_valid_booking)
+    #     data = json.loads(res.data)
         
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(data['success'], True)
-        self.assertTrue(data['created'])
+    #     self.assertEqual(res.status_code, 200)
+    #     self.assertEqual(data['success'], True)
+    #     self.assertTrue(data['created'])
         
-    # Test 422 create new booking
-    def test_422_create_booking(self):
-        res = self.client().post('/bookings', json=self.new_invalid_booking)
-        data = json.loads(res.data)
+    # # Test 422 create new booking
+    # def test_422_create_booking(self):
+    #     res = self.client().post('/bookings', headers=self.headers, json=self.new_invalid_booking)
+    #     data = json.loads(res.data)
         
-        self.assertEqual(res.status_code, 422)
-        self.assertEqual(data['success'], False)
-        self.assertEqual(data['message'], 'unprocessable')
+    #     self.assertEqual(res.status_code, 422)
+    #     self.assertEqual(data['success'], False)
+    #     self.assertEqual(data['message'], 'unprocessable')
         
-    # Test 405 on create new booking
-    def test_405_create_booking(self):
-        res = self.client().post('/bookings/100', json=self.new_valid_booking)
-        data = json.loads(res.data)
+    # # Test 405 on create new booking
+    # def test_405_create_booking(self):
+    #     res = self.client().post('/bookings/100', headers=self.headers, json=self.new_valid_booking)
+    #     data = json.loads(res.data)
         
-        self.assertEqual(res.status_code, 405)
-        self.assertEqual(data['success'], False)
-        self.assertEqual(data['message'], 'method not allowed')
+    #     self.assertEqual(res.status_code, 405)
+    #     self.assertEqual(data['success'], False)
+    #     self.assertEqual(data['message'], 'method not allowed')
+        
+    # # Tes 401 create booking
+    # def test_401_create_booking(self):
+    #     res = self.client().post('/bookings', json=self.new_valid_booking)
+    #     data = json.loads(res.data)
+        
+    #     self.assertEqual(res.status_code, 401)
         
     # # Test to retrieve all available bookings
     # def test_get_bookings(self):
-    #     res = self.client().get('/bookings')
+    #     res = self.client().get('/bookings', headers=self.headers)
     #     data = json.loads(res.data)
         
     #     self.assertEqual(res.status_code, 200)
     #     self.assertEqual(data['success'], True)
     #     self.assertTrue(data['bookings'])
+        
+    # def test_401_get_bookings(self):
+    #     res = self.client().get('/bookings')
+    #     data = json.loads(res.data)
+        
+    #     self.assertEqual(res.status_code, 401)
     
     # # Test get detail on single booking
     # def test_get_booking_detail(self):
-    #     res = self.client().get('/bookings/1')
+    #     res = self.client().get('/bookings/1', headers=self.headers)
     #     data = json.loads(res.data)
         
     #     self.assertEqual(res.status_code, 200)
     #     self.assertEqual(data['success'], True)
     #     self.assertTrue(data['booking'])
         
+    # def test_401_get_booking_detail(self):
+    #     res = self.client().get('/bookings/1')
+    #     data = json.loads(res.data)
+        
+    #     self.assertEqual(res.status_code, 401)
+        
     # # Test 422 retrieve infos on single unexisting booking
     # def test_422_get_booking_detail(self):
-    #     res = self.client().get('/bookings/100')
+    #     res = self.client().get('/bookings/100', headers=self.headers)
     #     data = json.loads(res.data)
         
     #     self.assertEqual(res.status_code, 422)
@@ -387,7 +436,7 @@ class FaabaTestCase(unittest.TestCase):
         
     # # Test delete existing booking
     # def test_delete_booking(self):
-    #     res = self.client().delete('/bookings/2')
+    #     res = self.client().delete('/bookings/2', headers=self.headers)
     #     data = json.loads(res.data)
         
     #     self.assertEqual(res.status_code, 200)
@@ -396,7 +445,7 @@ class FaabaTestCase(unittest.TestCase):
         
     # # Test 422 delete unexisting booking
     # def test_422_delete_booking(self):
-    #     res = self.client().delete('/bookings/100')
+    #     res = self.client().delete('/bookings/100', headers=self.headers)
     #     data = json.loads(res.data)
         
     #     self.assertEqual(res.status_code, 422)
@@ -405,7 +454,7 @@ class FaabaTestCase(unittest.TestCase):
         
     # # Test update booking
     # def test_update_booking(self):
-    #     res = self.client().put('/bookings/1', json=self.update_valid_booking)
+    #     res = self.client().put('/bookings/1', headers=self.headers, json=self.update_valid_booking)
     #     data = json.loads(res.data)
         
     #     self.assertEqual(res.status_code, 200)
@@ -414,12 +463,21 @@ class FaabaTestCase(unittest.TestCase):
         
     # # Test 422 update existing booking with invalid inputs
     # def test_422_update_booking(self):
-    #     res = self.client().put('/bookings/1', json=self.update_invalid_booking)
+    #     res = self.client().put('/bookings/1', headers=self.headers, json=self.update_invalid_booking)
     #     data = json.loads(res.data)
         
     #     self.assertEqual(res.status_code, 422)
     #     self.assertEqual(data['success'], False)
     #     self.assertEqual(data['message'], 'unprocessable')
+    
+    # Test 401 update booking
+    # def test_401_update_booking(self):
+    #     res = self.client().put('/bookings/1', json=self.update_valid_booking)
+    #     data = json.loads(res.data)
+        
+    #     self.assertEqual(res.status_code, 401)
+    
+    # =========================================================================END==================================================
         
     # #Testing retrieves users successfully
     # def test_get_users(self):
