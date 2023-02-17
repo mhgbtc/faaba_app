@@ -90,40 +90,48 @@ Les tests sont exécutés en utilisant unittest. Pour exécuter les tests, exéc
 
 1. S'inscrire:
 
-POST /register
+`POST /register`
+```json
 {
     "email" : "test7@gmail.com",
     "password" : "Test1234",
     "confirm_password" : "Test1234"
 }
-
+```
 Réponse :
+```json
 {
     "created": 5,
     "success": true,
     "token": "<votre_token>"
 }
+```
 
 2. Se connecter
 
-POST /login
+`POST /login`
+```json
 {
     "email" : "test7@gmail.com",
     "password" : "Test1234"
 }
+```
 
 Réponse :
+```json
 {
     "logged": 5,
     "success": true,
     "token": "<votre_token>"
 }
+```
 
 3. Obtenir la liste des trajets disponibles
 
-GET /rides
+`GET /rides`
 
 Réponse :
+```json
 {
     "rides": [
         {
@@ -147,16 +155,20 @@ Réponse :
     ],
     "success": true
 }
+```
 
 4. Option Recherche : Obtenir la liste des trajets disponibles par recherche
 
-GET /rides
+`GET /rides`
+```json
 {
     "arrival": "Calavi",
     "departure": "Porto"
 }
+```
 
 Réponse :
+```json
 {
     "rides": [
         {
@@ -171,15 +183,16 @@ Réponse :
     ],
     "success": true
 }
+```
 
 ### Pour les points de terminaison restants, tâchez de renseigner le token issu de l'inscription ou connexion.
 
-Header:
-Authorization: Bearer <votre token>
+Header: `Authorization: Bearer <votre token>`
 
 5. Publier un nouveau trajet
 
-POST /rides
+`POST /rides`
+```json
 {
     "arrival": "Sado",
     "departure": "Gbeko",
@@ -188,20 +201,25 @@ POST /rides
     "estimated_arrival_date": "2023-03-25 14:00:00",
     "seats": 1
 }
+```
 
 Réponse : 
+```json
 {
     "created": 5,
     "success": true
 }
+```
 
 6. Faire une réservation
 
-POST /bookings
+`POST /bookings`
+```json
 {
     "passenger_id": 4,
     "ride_id": 1
 }
+```
 
 Réponse :
 ```json
