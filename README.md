@@ -204,11 +204,13 @@ POST /bookings
 }
 
 Réponse :
+```json
 {
     "created": 3,
     "success": true
 }
+```
 
 ## Auteur
 
-- Mahougnon Samuel
+Mahougnon Samuel
