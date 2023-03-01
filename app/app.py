@@ -1,27 +1,40 @@
-from flask import Flask, jsonify, request, abort, session
-from flask_cors import CORS
+from flask import Flask, jsonify, request, abort, session, url_for
+from flask_cors import CORS, cross_origin
 from models import *
 from flask_migrate import Migrate
-from flask_login import LoginManager, login_user, logout_user, current_user
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_bcrypt import Bcrypt
+from flask_mail import Mail, Message
 from datetime import datetime, timedelta
 from functools import wraps
 import re
 import jwt
 
+from controllers.user_controller import user_controller
+
 def create_app(test_config=None):
     # creating and configuring the app
     app = Flask(__name__)
     app.config['SECRET_KEY'] = '8f356b6dece94176854bf3ac5dd14273'
+    # app.config['EMAIL_VERIFICATION_SALT'] = '347a5b1674aa493a900f2c0cb0650251'
+    app.config.from_object('config')
     
     with app.app_context():
         setup_db(app)
         migrate = Migrate(app, db)
         bcrypt = Bcrypt(app)
+        mail = Mail(app)
+        mail.init_app(app)
+        login_manager = LoginManager()
+        login_manager.init_app(app)
     
     # setting up CORS
     CORS(app)
     
+    @login_manager.user_loader
+    def load_user(user_id):
+        return User.query.get(int(user_id))
+
     # Using the after_request decorator to set Access-Control-Allow
     @app.after_request
     def after_request(response):
@@ -33,29 +46,19 @@ def create_app(test_config=None):
         )
         return response
     
-    def token_required(f):
-        @wraps(f)
-        def decorated(*args, **kwargs):
-            token = None
-        
-            if 'Authorization' in request.headers:
-                auth_header = request.headers['Authorization']
-                if 'Bearer ' in auth_header:
-                    token = auth_header.split(' ')[1]
-                else:
-                    return jsonify({'success': False, 'message': 'Invalid token format'}), 401
-            else:
-                return jsonify({'success': False, 'message': 'Token is missing'}), 401
-
-            try:
-                data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
-                current_user = User.query.filter_by(id=data['user']).first()
-            except:
-                return jsonify({'success': False, 'message': 'Invalid token'}), 401
-            
-            return f(current_user, *args, **kwargs)
-
-        return decorated
+    # Generate confirmation token
+    def generate_confirmation_token(email):
+        payload = {
+            'exp': datetime.now(timezone('Africa/Porto-Novo')) + timedelta(minutes=5),
+            'iat': datetime.now(timezone('Africa/Porto-Novo')),
+            'sub': email
+        }
+        token = jwt.encode(
+            payload,
+            app.config['SECRET_KEY'],
+            algorithm='HS256'
+        )
+        return token
     
     # writing my endpoints >>>
     
@@ -64,45 +67,75 @@ def create_app(test_config=None):
     def register():
         body = request.get_json()
         
+        fullname = body.get('fullname', None)
         email = body.get('email', None)
+        is_driver = body.get('is_driver', None)
         password = body.get('password', None)
         confirm_password = body.get('confirm_password', None)
-        # firstname = body.get('firstname', None)
-        # lastname = body.get('lastname', None)
-        # phone = body.get('phone', None)
         
         #verify if there's not yet a user with the same email since it's used to be unique
         check_user = User.query.filter_by(email=email).first()
-        
-        # if not firstname or not lastname or not email or not password or not confirm_password or not phone or not re.match(r'^\+229[0-9]{8}$', phone) or not re.match(r"[^@]+@[^@]+\.[^@]+", email) or check_user or password != confirm_password:
-        #     abort(422)
             
-        if not email or not password or not confirm_password or not re.match(r"[^@]+@[^@]+\.[^@]+", email) or check_user or password != confirm_password:
+        if not fullname or not is_driver or not email or not password or not confirm_password or not re.match(r"[^@]+@[^@]+\.[^@]+", email) or check_user or password != confirm_password:
             abort(422)
             
         #hash the password before insertion...
         password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
         
-        new_user = User(email, password_hash)
+        new_user = User(fullname, email, password_hash, is_driver)
         new_user.insert()
         
-        # login_user(user)
-        session['logged_in'] = True
+        # Générer un jeton JWT pour l'adresse e-mail de l'utilisateur
+        token = generate_confirmation_token(new_user.email)
         
-        token = jwt.encode(
-            {
-                'user': new_user.id,
-            },
-            app.config['SECRET_KEY']
+        # Construire le lien de confirmation
+        confirmation_url = url_for(
+            'confirm_email',
+            token=token,
+            _external=True
         )
+        
+        # Envoyer un e-mail de confirmation à l'utilisateur
+        msg = Message(
+            subject='Confirmation de votre adresse e-mail',
+            recipients=[email],
+            body=f'Cliquez sur le lien suivant pour confirmer votre adresse e-mail: {confirmation_url}'
+        )
+        mail.send(msg)
         
         return jsonify(
             {
                 "success" : True,
                 "created" : new_user.id,
-                'token': token
+                "message" : "Confirmation email sent"
             }
         )
+    
+    @app.route('/confirm_email')
+    def confirm_email():
+        token = request.args.get('token')
+        
+        try:
+            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            email = payload['sub']
+            
+            user = User.query.filter_by(email=email).first()
+            
+            user.is_email_verified = True
+            user.update()
+            
+            return jsonify(
+                {
+                    "message" : "Votre adresse e-mail a été vérifiée avec succès!"
+                }
+            )
+            
+        except:
+            return jsonify(
+                {
+                    "message" : "Le lien de confirmation est invalide ou a expiré!"
+                }
+            )
     
     # Endpoint used to log user in
     @app.route('/login', methods=['POST'])
@@ -114,36 +147,39 @@ def create_app(test_config=None):
         
         check_user = User.query.filter_by(email=email).first()        
         
+        if check_user.is_email_verified == False:
+            return jsonify(
+                {
+                    "success" : False,
+                    "message" : "Vous devez confirmer votre email"
+                }
+            ), 422
+        
         if check_user and bcrypt.check_password_hash(check_user.password, password):
             
-            # login_user(user)
+            login_user(check_user)
             session['logged_in'] = True
-            
-            token = jwt.encode(
-                {
-                    'user': check_user.id
-                },
-                app.config['SECRET_KEY']
-            )
             
             return jsonify(
                 {
                     "success" : True,
-                    "logged" : check_user.id,
-                    'token': token
+                    "logged" : check_user.id
                 }
             )
         else:
             abort(422)
             
     # Logout user
-    @app.route("/logout", methods=["POST"])
+    @app.route('/logout', methods=['POST'])
     def logout():
-        # déconnecter l'utilisateur
-        session['logged_in'] = False
-
-        # renvoyer le message de succès
-        return jsonify(message="L'utilisateur a été déconnecté avec succès."), 200
+        session.pop('logged_in', None)
+        logout_user()
+        return jsonify(
+            {
+                'success': True,
+                'message' : 'deconnecte'
+            }    
+        )
     
     # Endpoint used to retrieve all rides
     @app.route('/rides', methods=['GET'])
@@ -183,8 +219,8 @@ def create_app(test_config=None):
         
     # Endpoint used to create new ride
     @app.route('/rides', methods=['POST'])
-    @token_required
-    def create_rides(current_user):
+    @login_required
+    def create_rides():
         body = request.get_json()
         
         driver_id = body.get('driver_id', None)
@@ -209,8 +245,8 @@ def create_app(test_config=None):
     
     # Endpoint used to manipulate ride
     @app.route('/rides/<int:ride_id>', methods=['GET', 'DELETE', 'PUT'])
-    @token_required
-    def ride_manipulation(current_user, ride_id):
+    @login_required
+    def ride_manipulation(ride_id):
         try:
             ride = Ride.query.filter(Ride.id == ride_id).one_or_none()
             
@@ -257,8 +293,8 @@ def create_app(test_config=None):
 
     # Endpoint used to retrieve all bookings or create a new one
     @app.route('/bookings', methods=['GET', 'POST'])
-    @token_required
-    def get_and_create_bookings(current_user):
+    @login_required
+    def get_and_create_bookings():
         if request.method == 'GET':
             bookings = Booking.query.order_by(Booking.id).all()
             
@@ -308,8 +344,8 @@ def create_app(test_config=None):
             
     # Endpoint used to manipulate booking
     @app.route('/bookings/<int:booking_id>', methods=['GET', 'DELETE', 'PUT'])
-    @token_required
-    def booking_manipulation(current_user, booking_id):
+    @login_required
+    def booking_manipulation(booking_id):
         try:
             booking = Booking.query.filter(Booking.id == booking_id).one_or_none()
             

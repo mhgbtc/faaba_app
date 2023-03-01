@@ -4,6 +4,9 @@ from flask_sqlalchemy import SQLAlchemy
 from pytz import timezone
 import json
 import datetime
+from time import time
+import jwt
+from flask_login import UserMixin
 
 database_name = 'faaba_db'
 database_path = "postgresql://{}:{}@{}/{}".format("postgres", "root", "localhost:5432", database_name)
@@ -20,12 +23,17 @@ def setup_db(app, database_path=database_path):
 #----------------------------------------------------------------------------#
 # User Model
 #----------------------------------------------------------------------------#
-class User(db.Model):
+class User(db.Model, UserMixin):
     __tablename__ = 'users'
     
     id = db.Column(db.Integer, primary_key=True)
+    fullname = db.Column(db.String(255), nullable=False, unique=False)
     email = db.Column(db.String(255), nullable=False, unique=True)
     password = db.Column(db.String(255), nullable=False)
+    is_driver = db.Column(db.Boolean, default=True)
+    is_email_verified = db.Column(db.Boolean, default=False)
+    registration_date = db.Column(db.DateTime, default=datetime.datetime.now(timezone('Africa/Porto-Novo')))
+    
     # firstname = db.Column(db.String(255), nullable=False)
     # lastname = db.Column(db.String(255), nullable=False)
     # sexe = db.Column(db.String(2), nullable=True)
@@ -40,12 +48,15 @@ class User(db.Model):
     
     # messages = db.relationship('Message', backref='user', lazy=True)
     # avis = db.relationship('Avis', backref='user', lazy=True)
+    
     rides = db.relationship('Ride', backref='user', lazy=True)
     bookings = db.relationship('Booking', backref='user', lazy=True)
     
-    def __init__(self, email, password):
+    def __init__(self, fullname, email, password, is_driver):
+        self.fullname = fullname
         self.email = email
         self.password = password
+        self.is_driver = is_driver
         
     def insert(self):
         db.session.add(self)
@@ -61,8 +72,12 @@ class User(db.Model):
     def format(self):
         return{
             'id' : self.id,
+            'fullname' : self.fullname,
             'email' : self.email,
-            'password' : self.password
+            'password' : self.password,
+            'is_driver' : self.is_driver,
+            'is_email_verified' : self.is_email_verified,
+            'registration_date' : self.registration_date
         }
     
 #----------------------------------------------------------------------------#

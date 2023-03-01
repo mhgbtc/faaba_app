@@ -9,3 +9,4 @@ flask-bcrypt==1.0.1
 flask_login==0.6.2
 datetime==5.0
 PyJWT==2.6.0
+flask_mail==0.9.1
