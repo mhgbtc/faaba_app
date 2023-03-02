@@ -71,7 +71,6 @@ simplejson==3.17.6
 six==1.16.0
 SQLAlchemy==1.4.40
 systemd-python==234
-ubuntu-advantage-tools==27.12
 ubuntu-drivers-common==0.0.0
 ufw==0.36.1
 unattended-upgrades==0.1
