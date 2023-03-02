@@ -9,7 +9,6 @@ colorama==0.4.4
 cryptography==3.4.8
 DateTime==5.0
 dbus-python==1.2.18
-defer==1.0.6
 distro==1.7.0
 distro-info===1.1build1
 dnspython==2.2.1
