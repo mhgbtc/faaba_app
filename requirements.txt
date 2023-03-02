@@ -1,6 +1,6 @@
 alembic==1.9.1
 aniso8601==9.0.1
-apturl==0.5.2
+apturl
 bcrypt==4.0.1
 blinker==1.4
 Brlapi==0.8.3
