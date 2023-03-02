@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 import re
 import jwt
+import os
 
 def create_app(test_config=None):
     # creating and configuring the app
@@ -16,6 +17,12 @@ def create_app(test_config=None):
     app.config['SECRET_KEY'] = '8f356b6dece94176854bf3ac5dd14273'
     # app.config['EMAIL_VERIFICATION_SALT'] = '347a5b1674aa493a900f2c0cb0650251'
     app.config.from_object('config')
+    
+    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+    app.config['MAIL_PORT'] = 587
+    app.config['MAIL_USE_TLS'] = True
+    app.config['MAIL_USERNAME'] = os.environ['MAIL_USERNAME']
+    app.config['MAIL_PASSWORD'] = os.environ['MAIL_PASSWORD']
     
     with app.app_context():
         setup_db(app)
