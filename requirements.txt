@@ -71,6 +71,3 @@ simplejson==3.17.6
 six==1.16.0
 SQLAlchemy==1.4.40
 systemd-python==234
-ufw==0.36.1
-usb-creator==0.3.7
-Werkzeug==2.2.2
