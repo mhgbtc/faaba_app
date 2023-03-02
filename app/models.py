@@ -90,20 +90,23 @@ class Ride(db.Model):
     driver_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     departure = db.Column(db.String(255), nullable=False)
     arrival = db.Column(db.String(255), nullable=False)
+    boardingLocation = db.Column(db.String(255), nullable=False)
     departure_date = db.Column(db.DateTime, nullable=False, default=datetime.datetime.now(timezone('Africa/Porto-Novo')))
     estimated_arrival_date = db.Column(db.DateTime, nullable=False, default=datetime.datetime.now(timezone('Africa/Porto-Novo')))
     seats = db.Column(db.Integer, nullable=False, default=1)
-    # participation = db.Column(db.Float, nullable=True)
-    # is_regular = db.Column(db.Boolean, default=False)
+    price = db.Column(db.Float, nullable=False)
+    
     bookings = db.relationship('Booking', backref='ride', lazy=True)
     
-    def __init__(self, driver_id, departure, arrival, departure_date, estimated_arrival_date, seats):
+    def __init__(self, driver_id, departure, arrival, boardingLocation, departure_date, estimated_arrival_date, seats, price):
         self.driver_id = driver_id
         self.departure = departure
         self.arrival = arrival
+        self.boardingLocation = boardingLocation
         self.departure_date = departure_date
         self.estimated_arrival_date = estimated_arrival_date
         self.seats = seats
+        self.price = price
         
     def insert(self):
         db.session.add(self)
@@ -121,10 +124,12 @@ class Ride(db.Model):
             'id' : self.id,
             'driver_id' : self.driver_id,
             'departure' : self.departure,
+            'boardingLocation' : self.boardingLocation,
             'arrival' : self.arrival,
             'departure_date' : self.departure_date,
             'estimated_arrival_date' : self.estimated_arrival_date,
-            'seats' : self.seats
+            'seats' : self.seats,
+            'price' : self.price
         }
     
 #----------------------------------------------------------------------------#

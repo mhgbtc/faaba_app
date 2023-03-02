@@ -10,8 +10,6 @@ from functools import wraps
 import re
 import jwt
 
-from controllers.user_controller import user_controller
-
 def create_app(test_config=None):
     # creating and configuring the app
     app = Flask(__name__)
@@ -221,27 +219,37 @@ def create_app(test_config=None):
     @app.route('/rides', methods=['POST'])
     @login_required
     def create_rides():
-        body = request.get_json()
-        
-        driver_id = body.get('driver_id', None)
-        departure = body.get('departure', None)
-        arrival = body.get('arrival', None)
-        departure_date = body.get('departure_date', None)
-        estimated_arrival_date = body.get('estimated_arrival_date', None)
-        seats = body.get('seats', None)
-        
-        if not departure or not arrival or not seats or seats < 1:
-            abort(422)
+        if current_user.is_driver == True:
+            body = request.get_json()
             
-        new_ride = Ride(driver_id, departure, arrival, departure_date, estimated_arrival_date, seats)
-        new_ride.insert()
-        
-        return jsonify(
-            {
-                'success' : True,
-                'created' : new_ride.id
-            }
-        )
+            driver_id = current_user.id
+            departure = body.get('departure', None)
+            arrival = body.get('arrival', None)
+            boardingLocation = body.get('boardingLocation', None)
+            departure_date = body.get('departure_date', None)
+            estimated_arrival_date = body.get('estimated_arrival_date', None)
+            seats = body.get('seats', None)
+            price = body.get('price', None)
+            
+            if not departure or not arrival or not boardingLocation or not seats or seats < 1:
+                abort(422)
+                
+            new_ride = Ride(driver_id, departure, arrival, boardingLocation, departure_date, estimated_arrival_date, seats, price)
+            new_ride.insert()
+            
+            return jsonify(
+                {
+                    'success' : True,
+                    'created' : new_ride.id
+                }
+            )
+        else:
+            return jsonify(
+                {
+                    "success" : False,
+                    "message" : "Unauthorised"
+                }
+            ), 403
     
     # Endpoint used to manipulate ride
     @app.route('/rides/<int:ride_id>', methods=['GET', 'DELETE', 'PUT'])
@@ -271,15 +279,17 @@ def create_app(test_config=None):
             elif request.method == 'PUT':
                 body = request.get_json()
                 
-                if not body.get('driver_id') or not body.get('departure') or not body.get('arrival') or not body.get('seats') or body.get('seats') < 1:
+                if not body.get('driver_id') or not body.get('departure') or not body.get('arrival') or not body.get('boardingLocation', None) or not body.get('seats') or body.get('seats') < 1:
                     abort(422)
                 
                 ride.driver_id = body.get('driver_id', None)
                 ride.departure = body.get('departure', None)
+                ride.boardingLocation = body.get('boardingLocation', None)
                 ride.arrival = body.get('arrival', None)
                 ride.departure_date = body.get('departure_date', None)
                 ride.estimated_arrival_date = body.get('estimated_arrival_date', None)
                 ride.seats = body.get('seats', None)
+                ride.price = body.get('price', None)
                 
                 ride.update()
                 return jsonify(
@@ -785,3 +795,6 @@ def create_app(test_config=None):
         ), 500
     
     return app
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
