@@ -67,6 +67,14 @@ def create_app(test_config=None):
     
     # writing my endpoints >>>
     
+    @app.route('/')
+    def hello_world():
+        return jsonify(
+            {
+                "message" : "Salut tout le monde! Tout va bien..."
+            }
+        )
+    
     # Endpoint used to register user
     @app.route('/register', methods=['POST'])
     def register():
