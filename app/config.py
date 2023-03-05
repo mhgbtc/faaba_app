@@ -1,8 +1,9 @@
 # config.py
+from os import getenv
 
-MAIL_SERVER = 'smtp.ethereal.email'
-MAIL_PORT = 587
-MAIL_USERNAME = 'pierce68@ethereal.email'
-MAIL_PASSWORD = 'gnc2fq2Ww2zHCQAbm7'
-MAIL_DEFAULT_SENDER = 'pierce68@ethereal.email'
-MAIL_USE_TLS = True
+MAIL_SERVER = getenv('MAIL_SERVER')
+MAIL_PORT = getenv('MAIL_PORT')
+MAIL_USERNAME = getenv('MAIL_USERNAME')
+MAIL_PASSWORD = getenv('MAIL_PASSWORD')
+MAIL_DEFAULT_SENDER = getenv('MAIL_DEFAULT_SENDER')
+MAIL_USE_TLS = bool(getenv('MAIL_USE_TLS'))
