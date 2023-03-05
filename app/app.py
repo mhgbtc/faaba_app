@@ -84,7 +84,7 @@ def create_app(test_config=None):
         # verify if there's not yet a user with the same email since it's used to be unique
         check_user = User.query.filter_by(email=email).first()
 
-        if not fullname or not is_driver or not email or not password or not confirm_password or not re.match(r"[^@]+@[^@]+\.[^@]+", email) or check_user or password != confirm_password:
+        if not fullname or not email or not password or not confirm_password or not re.match(r"[^@]+@[^@]+\.[^@]+", email) or check_user or password != confirm_password:
             abort(422)
 
         # hash the password before insertion...
