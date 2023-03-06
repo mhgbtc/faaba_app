@@ -66,7 +66,7 @@ def create_app(test_config=None):
     def hello_world():
         return jsonify(
             {
-                "message": "Salut tout le monde! Tout va bien..."
+                "message": "Salut le monde! Tout va bien GUIDJOOOO"
             }
         )
 
@@ -176,7 +176,12 @@ def create_app(test_config=None):
                 }
             )
         else:
-            abort(422)
+            return jsonify(
+                {
+                    'success' : False,
+                    'message' : "Quelque chose s'est mal passé"
+                }
+            ),422
 
     # Logout user
     @app.route('/logout', methods=['POST'])
@@ -186,7 +191,7 @@ def create_app(test_config=None):
         return jsonify(
             {
                 'success': True,
-                'message': 'deconnecte'
+                'message': 'Vous êtes déconnecté'
             }
         )
 
@@ -218,7 +223,12 @@ def create_app(test_config=None):
         rides = query.all()
 
         if not rides:
-            abort(404)
+            return jsonify(
+                {
+                    'success': False,
+                    'message': "Aucun trajet disponible"
+                }
+            ),404
 
         return jsonify(
             {
@@ -260,9 +270,9 @@ def create_app(test_config=None):
             return jsonify(
                 {
                     "success": False,
-                    "message": "Unauthorised"
+                    "message" : "Vous devez etre conducteur pous publier"
                 }
-            ), 403
+            ),403
 
     # Endpoint used to manipulate ride
     @app.route('/rides/<int:ride_id>', methods=['GET', 'DELETE', 'PUT'])
@@ -277,43 +287,49 @@ def create_app(test_config=None):
             if request.method == 'GET':
                 return jsonify(
                     {
-                        'success': True,
-                        'ride': ride.format()
+                        'success' : False,
+                        'message' : "Ce trajet n'existe pas."
                     }
-                )
+                ),404
             elif request.method == 'DELETE':
                 ride.delete()
                 return jsonify(
                     {
-                        'success': True,
-                        'deleted': ride.id
+                        'success' : True,
+                        'deleted' : ride.id,
+                        "message" : "Trajet supprimé"
                     }
                 )
             elif request.method == 'PUT':
                 body = request.get_json()
 
-                if not body.get('driver_id') or not body.get('departure') or not body.get('arrival') or not body.get('boardingLocation', None) or not body.get('seats') or body.get('seats') < 1:
+                if not body.get('departure') or not body.get('arrival') or not body.get('boardingLocation', None) or not body.get('seats') or body.get('seats') < 1:
                     abort(422)
-
-                ride.driver_id = body.get('driver_id', None)
+                
+                ride.driver_id = current_user.id
                 ride.departure = body.get('departure', None)
                 ride.boardingLocation = body.get('boardingLocation', None)
                 ride.arrival = body.get('arrival', None)
                 ride.departure_date = body.get('departure_date', None)
-                ride.estimated_arrival_date = body.get(
-                    'estimated_arrival_date', None)
+                ride.estimated_arrival_date = body.get('estimated_arrival_date', None)
                 ride.seats = body.get('seats', None)
                 ride.price = body.get('price', None)
-
+                
                 ride.update()
                 return jsonify(
                     {
-                        'success': True,
-                        'updated': ride.id
+                        'success' : True,
+                        'updated' : ride.id,
+                        "message" : "Trajet mis a jour"
                     }
                 )
         except:
-            abort(422)
+            return jsonify(
+                {
+                    'success' : False,
+                    'message' : "Quelque chose s'est mal passé"
+                }
+            ),422
 
     # Endpoint used to retrieve all bookings or create a new one
     @app.route('/bookings', methods=['GET', 'POST'])
@@ -323,7 +339,12 @@ def create_app(test_config=None):
             bookings = Booking.query.order_by(Booking.id).all()
 
             if not bookings:
-                abort(404)
+                return jsonify(
+                    {
+                        'success': False,
+                        'message': "Aucune reservation disponible"
+                    }
+                ),404
 
             return jsonify(
                 {
@@ -334,22 +355,27 @@ def create_app(test_config=None):
         elif request.method == 'POST':
             body = request.get_json()
 
-            passenger_id = body.get('passenger_id')
+            passenger_id = current_user.id
             ride_id = body.get('ride_id')
-
+            
             if not passenger_id or not ride_id:
-                abort(422)
-
-            # Check if the number of seats is suffisant
-            ride = Ride.query.get(ride_id)
-
-            if ride is None or ride.seats < 1:
                 return jsonify(
                     {
                         'success': False,
-                        'message': "Places insuffisantes pour la réservation."
+                        'message': "Impossible de reserver"
                     }
-                ), 400
+                ),422
+                
+            # Check if the number of seats is suffisant
+            ride = Ride.query.get(ride_id)
+            
+            if ride is None or ride.seats < 1:
+                return jsonify(
+                    {
+                        'success' : False,
+                        'message' : "Places insuffisantes pour la réservation."
+                    }
+                ), 422
 
             new_booking = Booking(passenger_id, ride_id)
             new_booking.insert()
@@ -361,7 +387,8 @@ def create_app(test_config=None):
             return jsonify(
                 {
                     'success': True,
-                    'created': new_booking.id
+                    'created': new_booking.id,
+                    "message" : "Reservation faite"
                 }
             )
 
@@ -385,126 +412,152 @@ def create_app(test_config=None):
                 )
             elif request.method == 'DELETE':
                 ride = Ride.query.get(booking.ride_id)
-
+                
                 # Supprimer la reservation
                 booking.delete()
-
+                
                 # restaurer le nombre de seats
                 ride.seats += 1
-
+                
                 # Mettre a jour rides
                 ride.update()
 
                 return jsonify(
                     {
-                        'success': True,
-                        'deleted': booking.id
+                        'success' : True,
+                        'deleted' : booking.id,
+                        "message" : "Reservation supprimee"
                     }
                 )
             elif request.method == 'PUT':
                 body = request.get_json()
-
-                passenger_id = body.get('passenger_id')
+                
+                passenger_id = current_user.id
                 ride_id = body.get('ride_id')
-
+                
                 # Check if the number of seats is suffisant
                 ride = Ride.query.get(ride_id)
-
-                if ride is None or ride.seats < 1:
+                
+                if ride is None:
                     return jsonify(
                         {
-                            'success': False,
-                            'message': "Places insuffisantes pour la réservation."
+                            'success' : False,
+                            'message' : "Mise a jour impossible : Ce trajet n'existe pas"
                         }
-                    ), 400
-
-                if not passenger_id or not ride_id:
-                    abort(422)
-
+                    ), 422
+                
+                if ride.seats < 1:
+                    return jsonify(
+                        {
+                            'success' : False,
+                            'message' : "Places insuffisantes pour la réservation."
+                        }
+                    ), 422
+                
                 booking.passenger_id = passenger_id
                 booking.ride_id = ride_id
                 booking.update()
-
+                
                 # Update the number of seats
                 ride.seats -= 1
                 ride.update()
-
+                
                 return jsonify(
                     {
-                        'success': True,
-                        'updated': booking.id
+                        'success' : True,
+                        'updated' : booking.id,
+                        "message" : "Mise a jour reussie"
                     }
                 )
         except:
-            abort(422)
+            return jsonify(
+                {
+                    'success' : False,
+                    'message' : "Quelque chose s'est mal passé"
+                }
+            ),422
 
-    # # Endpoint used to retrieve all users from database
-    # @app.route('/users', methods=['GET'])
-    # def get_users():
-    #     users = User.query.order_by(User.id).all()
+    # Endpoint used to retrieve all users from database
+    @app.route('/users', methods=['GET'])
+    @login_required
+    def get_users():
+        users = User.query.order_by(User.id).all()
+        
+        if not users:
+            return jsonify(
+                {
+                    'success': False,
+                    'message': "Aucun utilisateur inscrit"
+                }
+            ),404
+            
+        return jsonify(
+            {
+                "success" : True,
+                "users" : [user.format() for user in users]
+            }
+        )
 
-    #     if not users:
-    #         abort(404)
-
-    #     return jsonify(
-    #         {
-    #             "success" : True,
-    #             "users" : [user.format() for user in users]
-    #         }
-    #     )
-
-    # # Endpoint used to retrieve, modify and delete a user.
-    # @app.route('/users/<int:user_id>', methods=['GET', 'DELETE', 'PUT'])
-    # def user_manipulation(user_id):
-    #     try:
-    #         user = User.query.filter(User.id == user_id).one_or_none()
-
-    #         if user is None:
-    #             abort(404)
-
-    #         if request.method == 'GET':
-    #             return jsonify(
-    #                 {
-    #                     "success" : True,
-    #                     "user" : user.format()
-    #                 }
-    #             )
-    #         elif request.method == 'DELETE':
-    #             user.delete()
-    #             return jsonify(
-    #                 {
-    #                     "success" : True,
-    #                     "deleted" : user.id
-    #                 }
-    #             )
-    #         elif request.method == 'PUT':
-    #             body = request.get_json()
-
-    #             if not body.get('firstname') or not body.get('lastname') or not body.get('email') or not body.get('password') or not body.get('phone') or not re.match(r'^\+229[0-9]{8}$', body.get('phone')) or not re.match(r"[^@]+@[^@]+\.[^@]+", body.get('email')):
-    #                 abort(422)
-
-    #             user.firstname = body.get('firstname')
-    #             user.lastname = body.get('lastname')
-    #             user.email = body.get('email')
-    #             user.password = body.get('password')
-    #             user.sexe = body.get('sexe')
-    #             user.city = body.get('city')
-    #             user.birthday = body.get('birthday')
-    #             user.phone = body.get('phone')
-    #             user.is_phone_visible = body.get('is_phone_visible')
-    #             user.is_driver = body.get('is_driver')
-    #             user.profile_image = body.get('profile_image')
-    #             user.modified_at = datetime.datetime.now(timezone('Africa/Porto-Novo'))
-
-    #             user.update()
-    #             return jsonify(
-    #                 {
-    #                     "success" : True,
-    #                     "updated" : user.id
-    #                 }
-    #             )
-    #     except:
-    #         abort(422)
+    # Endpoint used to retrieve, modify and delete a user.
+    @app.route('/users/<int:user_id>', methods=['GET', 'DELETE', 'PUT'])
+    @login_required
+    def user_manipulation(user_id):
+        try:
+            user = User.query.filter(User.id == user_id).one_or_none()
+            
+            if user is None:
+                return jsonify(
+                    {
+                        "success": False,
+                        "message": "Cet utilisateur n'existe pas"
+                    }
+                ),404
+                
+            if request.method == 'GET':
+                return jsonify(
+                    {
+                        "success" : True,
+                        "user" : user.format()
+                    }
+                )
+            elif request.method == 'DELETE':
+                user.delete()
+                return jsonify(
+                    {
+                        "success" : True,
+                        "deleted" : user.id,
+                        "message": "Compte supprimé"
+                    }
+                )
+            elif request.method == 'PUT':
+                body = request.get_json()
+                
+                if not body.get('fullname') or not body.get('email') or not re.match(r"[^@]+@[^@]+\.[^@]+", body.get('email')):
+                    return jsonify(
+                        {
+                            "success": False,
+                            "message": "Quelque chose s'est mal passé"
+                        }
+                    ),422
+                
+                user.fullname = body.get('fullname')
+                user.email = body.get('email')
+                
+                user.update()
+                return jsonify(
+                    {
+                        "success" : True,
+                        "updated" : user.id,
+                        "message" : "Profile modifié"
+                    }
+                )
+        except:
+            return jsonify(
+                {
+                    "success": False,
+                    "message": "Quelque chose s'est mal passé"
+                }
+            ),422
 
     # # Endpoint used to retrieve all available cars and create a new one
     # @app.route('/cars', methods=['GET', 'POST'])
