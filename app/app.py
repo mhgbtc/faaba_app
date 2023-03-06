@@ -199,6 +199,9 @@ def create_app(test_config=None):
     # Endpoint used to retrieve all rides
     @app.route('/rides', methods=['GET'])
     def get_rides():
+        
+        query = Ride.query
+        
         body = request.get_json()
 
         departure = body.get('departure', None)
@@ -206,8 +209,6 @@ def create_app(test_config=None):
         departure_date = body.get('departure_date', None)
         estimated_arrival_date = body.get('estimated_arrival_date', None)
         seats = body.get('seats', None)
-
-        query = Ride.query
 
         if departure is not None:
             query = query.filter(Ride.departure.ilike("%" + departure + "%"))
