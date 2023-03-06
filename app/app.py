@@ -199,17 +199,14 @@ def create_app(test_config=None):
     # Endpoint used to retrieve all rides
     @app.route('/rides', methods=['GET'])
     def get_rides():
-        
         query = Ride.query
-        
-        body = request.get_json()
-
-        departure = body.get('departure', None)
-        arrival = body.get('arrival', None)
-        departure_date = body.get('departure_date', None)
-        estimated_arrival_date = body.get('estimated_arrival_date', None)
-        seats = body.get('seats', None)
-
+            
+        departure = request.args.get('departure', None)
+        arrival = request.args.get('arrival', None)
+        departure_date = request.args.get('departure_date', None)
+        estimated_arrival_date = request.args.get('estimated_arrival_date', None)
+        seats = request.args.get('seats', None)
+            
         if departure is not None:
             query = query.filter(Ride.departure.ilike("%" + departure + "%"))
         if arrival is not None:
@@ -217,13 +214,12 @@ def create_app(test_config=None):
         if departure_date is not None:
             query = query.filter_by(departure_date=departure_date)
         if estimated_arrival_date is not None:
-            query = query.filter_by(
-                estimated_arrival_date=estimated_arrival_date)
+            query = query.filter_by(estimated_arrival_date=estimated_arrival_date)
         if seats is not None:
             query = query.filter_by(seats=seats)
-
+            
         rides = query.all()
-
+            
         if not rides:
             return jsonify(
                 {
@@ -231,11 +227,11 @@ def create_app(test_config=None):
                     'message': "Aucun trajet disponible"
                 }
             ),404
-
+                
         return jsonify(
             {
-                'success': True,
-                'rides': [ride.format() for ride in rides]
+                'success' : True,
+                'rides' : [ride.format() for ride in rides]
             }
         )
 
