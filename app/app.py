@@ -114,7 +114,7 @@ def create_app(test_config=None):
         return jsonify(
             {
                 "success": True,
-                "created": new_user.id,
+                "user_created": new_user.id,
                 "message": "Confirmation email sent"
             }
         )
@@ -172,7 +172,7 @@ def create_app(test_config=None):
             return jsonify(
                 {
                     "success": True,
-                    "logged": check_user.id
+                    "user_id": check_user.id
                 }
             )
         else:
@@ -185,6 +185,7 @@ def create_app(test_config=None):
 
     # Logout user
     @app.route('/logout', methods=['POST'])
+    @login_required
     def logout():
         session.pop('logged_in', None)
         logout_user()
@@ -263,7 +264,7 @@ def create_app(test_config=None):
             return jsonify(
                 {
                     'success': True,
-                    'created': new_ride.id
+                    'ride_created': new_ride.id
                 }
             )
         else:
@@ -282,21 +283,26 @@ def create_app(test_config=None):
             ride = Ride.query.filter(Ride.id == ride_id).one_or_none()
 
             if ride is None:
-                abort(404)
-
-            if request.method == 'GET':
                 return jsonify(
                     {
                         'success' : False,
                         'message' : "Ce trajet n'existe pas."
                     }
                 ),404
+
+            if request.method == 'GET':
+                return jsonify(
+                    {
+                        'success': True,
+                        'ride': ride.format()
+                    }
+                )
             elif request.method == 'DELETE':
                 ride.delete()
                 return jsonify(
                     {
                         'success' : True,
-                        'deleted' : ride.id,
+                        'ride_deleted' : ride.id,
                         "message" : "Trajet supprimé"
                     }
                 )
@@ -319,7 +325,7 @@ def create_app(test_config=None):
                 return jsonify(
                     {
                         'success' : True,
-                        'updated' : ride.id,
+                        'ride_updated' : ride.id,
                         "message" : "Trajet mis a jour"
                     }
                 )
@@ -387,7 +393,7 @@ def create_app(test_config=None):
             return jsonify(
                 {
                     'success': True,
-                    'created': new_booking.id,
+                    'booking_created': new_booking.id,
                     "message" : "Reservation faite"
                 }
             )
@@ -401,7 +407,12 @@ def create_app(test_config=None):
                 Booking.id == booking_id).one_or_none()
 
             if booking is None:
-                abort(404)
+                return jsonify(
+                    {
+                        'success' : False,
+                        'message' : "Reservation introuvable"
+                    }
+                ),404
 
             if request.method == 'GET':
                 return jsonify(
@@ -425,7 +436,7 @@ def create_app(test_config=None):
                 return jsonify(
                     {
                         'success' : True,
-                        'deleted' : booking.id,
+                        'booking_deleted' : booking.id,
                         "message" : "Reservation supprimee"
                     }
                 )
@@ -465,7 +476,7 @@ def create_app(test_config=None):
                 return jsonify(
                     {
                         'success' : True,
-                        'updated' : booking.id,
+                        'booking_updated' : booking.id,
                         "message" : "Mise a jour reussie"
                     }
                 )
@@ -525,7 +536,7 @@ def create_app(test_config=None):
                 return jsonify(
                     {
                         "success" : True,
-                        "deleted" : user.id,
+                        "user_deleted" : user.id,
                         "message": "Compte supprimé"
                     }
                 )
@@ -547,7 +558,7 @@ def create_app(test_config=None):
                 return jsonify(
                     {
                         "success" : True,
-                        "updated" : user.id,
+                        "user_updated" : user.id,
                         "message" : "Profile modifié"
                     }
                 )
