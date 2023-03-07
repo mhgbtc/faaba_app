@@ -487,7 +487,6 @@ def create_app(test_config=None):
 
     # Endpoint used to retrieve all users from database
     @app.route('/users', methods=['GET'])
-    @login_required
     def get_users():
         users = User.query.order_by(User.id).all()
         
