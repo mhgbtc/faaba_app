@@ -507,7 +507,6 @@ def create_app(test_config=None):
 
     # Endpoint used to retrieve, modify and delete a user.
     @app.route('/users/<int:user_id>', methods=['GET', 'DELETE', 'PUT'])
-    @login_required
     def user_manipulation(user_id):
         try:
             user = User.query.filter(User.id == user_id).one_or_none()
