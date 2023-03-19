@@ -15,8 +15,11 @@ import os
 def create_app(test_config=None):
     # creating and configuring the app
     app = Flask(__name__)
+    app.config['JWT_SECRET_KEY'] = os.getenv(
+        'JWT_SECRET_KEY', '53cce8ef0f5ec52663e20d19e81e5d75')
     app.config['SECRET_KEY'] = os.getenv(
         'SECRET_KEY', '8f356b6dece94176854bf3ac5dd14273')
+    ALGORITHM = 'HS256'
     app.config.from_object('config')
 
     with app.app_context():
@@ -60,6 +63,26 @@ def create_app(test_config=None):
         )
         return token
 
+    def jwt_required(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            auth_header = request.headers.get('Authorization')
+
+            if not auth_header:
+                return jsonify({'success': False, 'message': 'Authorization header is missing'}), 401
+
+            try:
+                token = auth_header.split(' ')[1]
+                decoded_token = jwt.decode(token, app.config['JWT_SECRET_KEY'], algorithms=[ALGORITHM])
+            except jwt.ExpiredSignatureError:
+                return jsonify({'success': False, 'message': 'Access token has expired'}), 401
+            except jwt.InvalidTokenError:
+                return jsonify({'success': False, 'message': 'Invalid access token'}), 401
+
+            return f(*args, **kwargs)
+
+        return decorated_function
+    
     # writing my endpoints >>>
 
     @app.route('/')
@@ -165,23 +188,33 @@ def create_app(test_config=None):
             ), 422
 
         if check_user and bcrypt.check_password_hash(check_user.password, password):
-
             login_user(check_user)
             session['logged_in'] = True
+
+            # Générez un jeton d'accès
+            access_token = jwt.encode(
+                {
+                    'user_id': check_user.id,
+                    'exp': datetime.utcnow() + timedelta(minutes=30)  # Expiration du jeton en 30 minutes (modifiable)
+                },
+                app.config['JWT_SECRET_KEY'],
+                algorithm=ALGORITHM
+            )
 
             return jsonify(
                 {
                     "success": True,
-                    "user_id": check_user.id
+                    "user_id": check_user.id,
+                    "access_token": access_token  # Retournez le jeton d'accès dans la réponse
                 }
             )
         else:
             return jsonify(
                 {
-                    'success' : False,
-                    'message' : "Quelque chose s'est mal passé"
+                    'success': False,
+                    'message': "Quelque chose s'est mal passé"
                 }
-            ),422
+            ), 422
 
     # Logout user
     @app.route('/logout', methods=['POST'])
@@ -237,7 +270,7 @@ def create_app(test_config=None):
 
     # Endpoint used to create new ride
     @app.route('/rides', methods=['POST'])
-    @login_required
+    @jwt_required
     def create_rides():
         if current_user.is_driver == True:
             body = request.get_json()
@@ -268,13 +301,13 @@ def create_app(test_config=None):
             return jsonify(
                 {
                     "success": False,
-                    "message" : "Vous devez etre conducteur pous publier"
+                    "message" : "Vous devez etre conducteur pour publier"
                 }
             ),403
 
     # Endpoint used to manipulate ride
     @app.route('/rides/<int:ride_id>', methods=['GET', 'DELETE', 'PUT'])
-    @login_required
+    @jwt_required
     def ride_manipulation(ride_id):
         try:
             ride = Ride.query.filter(Ride.id == ride_id).one_or_none()
@@ -336,7 +369,7 @@ def create_app(test_config=None):
 
     # Endpoint used to retrieve all bookings or create a new one
     @app.route('/bookings', methods=['GET', 'POST'])
-    @login_required
+    @jwt_required
     def get_and_create_bookings():
         if request.method == 'GET':
             bookings = Booking.query.order_by(Booking.id).all()
@@ -397,7 +430,7 @@ def create_app(test_config=None):
 
     # Endpoint used to manipulate booking
     @app.route('/bookings/<int:booking_id>', methods=['GET', 'DELETE', 'PUT'])
-    @login_required
+    @jwt_required
     def booking_manipulation(booking_id):
         try:
             booking = Booking.query.filter(
