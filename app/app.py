@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, abort, session, url_for
+from flask import Flask, jsonify, request, abort, session, url_for, g
 from flask_cors import CORS, cross_origin
 from models import *
 from flask_migrate import Migrate
@@ -74,6 +74,7 @@ def create_app(test_config=None):
             try:
                 token = auth_header.split(' ')[1]
                 decoded_token = jwt.decode(token, app.config['JWT_SECRET_KEY'], algorithms=[ALGORITHM])
+                g.user_id = decoded_token['user_id']
             except jwt.ExpiredSignatureError:
                 return jsonify({'success': False, 'message': 'Access token has expired'}), 401
             except jwt.InvalidTokenError:
@@ -272,10 +273,11 @@ def create_app(test_config=None):
     @app.route('/rides', methods=['POST'])
     @jwt_required
     def create_rides():
-        if current_user.is_driver == True:
+        user = User.query.get(g.user_id)
+        if user.is_driver == True:
             body = request.get_json()
 
-            driver_id = current_user.id
+            driver_id = g.user_id
             departure = body.get('departure', None)
             arrival = body.get('arrival', None)
             boardingLocation = body.get('boardingLocation', None)
@@ -342,7 +344,7 @@ def create_app(test_config=None):
                 if not body.get('departure') or not body.get('arrival') or not body.get('boardingLocation', None) or not body.get('seats') or body.get('seats') < 1:
                     abort(422)
                 
-                ride.driver_id = current_user.id
+                ride.driver_id = g.user_id
                 ride.departure = body.get('departure', None)
                 ride.boardingLocation = body.get('boardingLocation', None)
                 ride.arrival = body.get('arrival', None)
@@ -391,7 +393,7 @@ def create_app(test_config=None):
         elif request.method == 'POST':
             body = request.get_json()
 
-            passenger_id = current_user.id
+            passenger_id = g.user_id
             ride_id = body.get('ride_id')
             
             if not passenger_id or not ride_id:
