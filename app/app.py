@@ -10,7 +10,7 @@ from functools import wraps
 import re
 import jwt
 import os
-
+import traceback
 
 def create_app(test_config=None):
     # creating and configuring the app
@@ -898,7 +898,8 @@ def create_app(test_config=None):
             {
                 "success": False,
                 "error": 500,
-                "message": "internal server error"
+                "message": str(error),
+                "trace": traceback.format_exc(),
             }
         ), 500
 
