@@ -84,6 +84,29 @@ def create_app(test_config=None):
 
         return decorated_function
     
+    def send_email(to, subject, body, html=None):
+        msg = Message(
+            subject=subject,
+            recipients=[to],
+            body=body,
+            html=html
+        )
+        mail.send(msg)
+    
+    def send_booking_email(booking_id, driver_email, accept_url, reject_url):
+        html = f'''
+        <p>Une nouvelle réservation a été faite pour l'un de vos trajets.</p>
+        <p>Veuillez cliquer sur l'un des boutons ci-dessous pour accepter ou rejeter la réservation :</p>
+        <a href="{accept_url}" style="background-color: #4CAF50; border: none; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; margin: 4px 2px; cursor: pointer;">Accepter</a>
+        <a href="{reject_url}" style="background-color: #f44336; border: none; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; margin: 4px 2px; cursor: pointer;">Rejeter</a>
+        '''
+
+        send_email(
+            to=driver_email,
+            subject='Nouvelle réservation',
+            body='Une nouvelle réservation a été faite pour l\'un de vos trajets.',
+            html=html
+        )
     # writing my endpoints >>>
 
     @app.route('/')
@@ -423,18 +446,10 @@ def create_app(test_config=None):
             ride.update()
             
             driver = User.query.get(ride.driver_id)
-            msg = Message(
-                subject='Nouvelle réservation pour votre trajet',
-                recipients=[driver.email],
-                body=f'Bonjour {driver.fullname},\n\n'
-                    f'Une nouvelle réservation a été effectuée pour votre trajet entre {ride.departure} et {ride.arrival}.\n'
-                    f'Date de départ : {ride.departure_date}\n'
-                    f'Lieu d\'embarquement : {ride.boardingLocation}\n\n'
-                    f'Merci de bien vouloir prendre note de cette réservation et de vous préparer pour le trajet.\n\n'
-                    f'Cordialement,\n'
-                    f'L\'équipe de VotreApplication'
-            )
-            mail.send(msg)
+            
+            accept_url = url_for('accept_booking', booking_id=new_booking.id, _external=True)
+            reject_url = url_for('reject_booking', booking_id=new_booking.id, _external=True)
+            send_booking_email(new_booking.id, driver_email=driver.email, accept_url=accept_url, reject_url=reject_url)
 
             return jsonify(
                 {
@@ -534,6 +549,56 @@ def create_app(test_config=None):
                 }
             ),422
 
+    @app.route('/bookings/<int:booking_id>/accept', methods=['POST'])
+    @jwt_required
+    def accept_booking(booking_id):
+        booking = Booking.query.get(booking_id)
+        
+        if not booking:
+            return jsonify({'success': False, 'message': 'Booking not found'}), 404
+        
+        ride = Ride.query.get(booking.ride_id)
+        
+        if g.user_id != ride.driver_id:
+            return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+        
+        booking.status = 'accepted'
+        db.session.commit()
+
+        passenger = User.query.get(booking.passenger_id)
+        send_email(
+            to=passenger.email,
+            subject='Réservation acceptée',
+            body=f"Votre réservation pour le trajet de {ride.departure} à {ride.arrival} a été acceptée."
+        )
+
+        return jsonify({'success': True, 'message': 'Booking accepted'})
+
+    @app.route('/bookings/<int:booking_id>/reject', methods=['POST'])
+    @jwt_required
+    def reject_booking(booking_id):
+        booking = Booking.query.get(booking_id)
+        
+        if not booking:
+            return jsonify({'success': False, 'message': 'Booking not found'}), 404
+        
+        ride = Ride.query.get(booking.ride_id)
+        
+        if g.user_id != ride.driver_id:
+            return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+        
+        booking.status = 'rejected'
+        db.session.commit()
+
+        passenger = User.query.get(booking.passenger_id)
+        send_email(
+            to=passenger.email,
+            subject='Réservation rejetée',
+            body=f"Votre réservation pour le trajet de {ride.departure} à {ride.arrival} a été rejetée."
+        )
+
+        return jsonify({'success': True, 'message': 'Booking rejected'})
+    
     # Endpoint used to retrieve all users from database
     @app.route('/users', methods=['GET'])
     def get_users():
