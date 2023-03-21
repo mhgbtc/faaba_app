@@ -421,6 +421,20 @@ def create_app(test_config=None):
             # Update the number of seats
             ride.seats -= 1
             ride.update()
+            
+            driver = User.query.get(ride.driver_id)
+            msg = Message(
+                subject='Nouvelle réservation pour votre trajet',
+                recipients=[driver.email],
+                body=f'Bonjour {driver.fullname},\n\n'
+                    f'Une nouvelle réservation a été effectuée pour votre trajet entre {ride.departure} et {ride.arrival}.\n'
+                    f'Date de départ : {ride.departure_date}\n'
+                    f'Lieu d\'embarquement : {ride.boardingLocation}\n\n'
+                    f'Merci de bien vouloir prendre note de cette réservation et de vous préparer pour le trajet.\n\n'
+                    f'Cordialement,\n'
+                    f'L\'équipe de VotreApplication'
+            )
+            mail.send(msg)
 
             return jsonify(
                 {
