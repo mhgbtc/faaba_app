@@ -10,6 +10,7 @@ from flask_login import UserMixin
 
 database_name = 'faaba_db'
 database_path = "postgresql://{}:{}@{}/{}".format("postgres", "root", "localhost:5432", database_name)
+
 db = SQLAlchemy()
 
 # setup_db() : binds a flask app and a SQLAlchemy service
