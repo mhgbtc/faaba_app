@@ -144,10 +144,9 @@ class Booking(db.Model):
     ride_id = db.Column(db.Integer, db.ForeignKey('rides.id'), nullable=False)
     status = db.Column(db.String(20), nullable=False, default='pending')
     
-    def __init__(self, passenger_id, ride_id, status):
+    def __init__(self, passenger_id, ride_id):
         self.passenger_id = passenger_id
         self.ride_id = ride_id
-        self.status = status
     
     def insert(self):
         db.session.add(self)
