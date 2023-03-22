@@ -9,6 +9,7 @@ import jwt
 from flask_login import UserMixin
 
 database_name = 'faaba_db'
+# database_path = "postgresql://faaba_db:gUyG4OesFjXMgv2O5Id0bnkiTfKJPuIq@dpg-cg2dijg2qv24hdl141gg-a.frankfurt-postgres.render.com/faaba_db"
 database_path = "postgresql://{}:{}@{}/{}".format("postgres", "root", "localhost:5432", database_name)
 db = SQLAlchemy()
 
