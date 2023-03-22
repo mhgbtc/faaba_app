@@ -438,7 +438,7 @@ def create_app(test_config=None):
                     }
                 ), 422
 
-            new_booking = Booking(passenger_id, ride_id)
+            new_booking = Booking(passenger_id, ride_id, status="pending")
             new_booking.insert()
 
             # Update the number of seats
