@@ -196,7 +196,7 @@ def create_app(test_config=None):
             access_token = jwt.encode(
                 {
                     'user_id': check_user.id,
-                    'exp': datetime.utcnow() + timedelta(minutes=30)  # Expiration du jeton en 30 minutes (modifiable)
+                    'exp': datetime.utcnow() + timedelta(days=30)
                 },
                 app.config['JWT_SECRET_KEY'],
                 algorithm=ALGORITHM
