@@ -10,7 +10,6 @@ from flask_login import UserMixin
 
 database_name = 'faaba_db'
 database_path = "postgresql://{}:{}@{}/{}".format("postgres", "root", "localhost:5432", database_name)
-
 db = SQLAlchemy()
 
 # setup_db() : binds a flask app and a SQLAlchemy service
@@ -143,12 +142,10 @@ class Booking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     passenger_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     ride_id = db.Column(db.Integer, db.ForeignKey('rides.id'), nullable=False)
-    status = db.Column(db.String(20), nullable=False, default='pending')
     
-    def __init__(self, passenger_id, ride_id, status):
+    def __init__(self, passenger_id, ride_id):
         self.passenger_id = passenger_id
         self.ride_id = ride_id
-        self.status = status
     
     def insert(self):
         db.session.add(self)
@@ -165,8 +162,7 @@ class Booking(db.Model):
         return{
             'id' : self.id,
             'passenger_id' : self.passenger_id,
-            'ride_id' : self.ride_id,
-            'status' : self.status
+            'ride_id' : self.ride_id
         }
         
 #----------------------------------------------------------------------------#
